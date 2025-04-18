@@ -1,0 +1,216 @@
+-- Roblox Aimbot Script with Full Panel UI (Movable)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- === CONFIG ===
+local aimbotEnabled = false
+local holdingE = false
+local fovRadius = 100
+local targetPartName = "Head"
+
+-- === GUI Setup ===
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AimbotUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, 240, 0, 180)
+panel.Position = UDim2.new(0.05, 0, 0.2, 0)
+panel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+panel.BorderSizePixel = 0
+panel.Active = true
+panel.Draggable = true
+panel.Parent = screenGui
+
+local corner = Instance.new("UICorner", panel)
+corner.CornerRadius = UDim.new(0, 12)
+
+-- Title
+local title = Instance.new("TextLabel", panel)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "🎯 Aimbot Panel"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+
+-- Toggle Button
+local toggleBtn = Instance.new("TextButton", panel)
+toggleBtn.Size = UDim2.new(0.9, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0.05, 0, 0, 40)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.Text = "Aimbot: OFF"
+toggleBtn.Font = Enum.Font.Gotham
+toggleBtn.TextSize = 16
+
+local toggleCorner = Instance.new("UICorner", toggleBtn)
+toggleCorner.CornerRadius = UDim.new(0, 10)
+
+-- Part Selector Dropdown
+local partDropdown = Instance.new("TextButton", panel)
+partDropdown.Size = UDim2.new(0.9, 0, 0, 30)
+partDropdown.Position = UDim2.new(0.05, 0, 0, 80)
+partDropdown.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+partDropdown.TextColor3 = Color3.new(1, 1, 1)
+partDropdown.Text = "Target: Head"
+partDropdown.Font = Enum.Font.Gotham
+partDropdown.TextSize = 16
+
+local partCorner = Instance.new("UICorner", partDropdown)
+partCorner.CornerRadius = UDim.new(0, 10)
+
+-- FOV Radius Slider (TextBox)
+local fovLabel = Instance.new("TextLabel", panel)
+fovLabel.Size = UDim2.new(0.9, 0, 0, 20)
+fovLabel.Position = UDim2.new(0.05, 0, 0, 120)
+fovLabel.BackgroundTransparency = 1
+fovLabel.Text = "FOV Radius: " .. tostring(fovRadius)
+fovLabel.TextColor3 = Color3.new(1, 1, 1)
+fovLabel.Font = Enum.Font.Gotham
+fovLabel.TextSize = 14
+
+local fovBox = Instance.new("TextBox", panel)
+fovBox.Size = UDim2.new(0.9, 0, 0, 30)
+fovBox.Position = UDim2.new(0.05, 0, 0, 140)
+fovBox.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+fovBox.Text = tostring(fovRadius)
+fovBox.TextColor3 = Color3.new(1, 1, 1)
+fovBox.Font = Enum.Font.Gotham
+fovBox.TextSize = 16
+
+-- Event Hooks
+fovBox.FocusLost:Connect(function()
+    local num = tonumber(fovBox.Text)
+    if num then
+        fovRadius = math.clamp(num, 25, 500)
+        fovLabel.Text = "FOV Radius: " .. tostring(fovRadius)
+    else
+        fovBox.Text = tostring(fovRadius)
+    end
+end)
+
+toggleBtn.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    toggleBtn.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
+    toggleBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(70, 0, 0) or Color3.fromRGB(45, 45, 45)
+end)
+
+partDropdown.MouseButton1Click:Connect(function()
+    targetPartName = (targetPartName == "Head") and "Torso" or "Head"
+    partDropdown.Text = "Target: " .. targetPartName
+end)
+
+-- Drawing FOV Circle
+local fovCircle = Drawing.new("Circle")
+fovCircle.Color = Color3.fromRGB(255, 0, 0)
+fovCircle.Thickness = 2
+fovCircle.Filled = false
+fovCircle.Visible = true
+
+-- Highlight Enemies
+local function highlightEnemy(player)
+    if player.Character then
+        local highlight = player.Character:FindFirstChild("Highlight")
+        if not highlight then
+            highlight = Instance.new("Highlight")
+            highlight.Name = "Highlight"
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.Parent = player.Character
+        end
+    end
+end
+
+local function updateEnemyHighlights()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if player.Team ~= LocalPlayer.Team then
+                if player.Character then
+                    highlightEnemy(player)
+                end
+                player.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    highlightEnemy(player)
+                end)
+            else
+                if player.Character then
+                    local h = player.Character:FindFirstChild("Highlight")
+                    if h then h:Destroy() end
+                end
+            end
+        end
+    end
+end
+
+LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
+    updateEnemyHighlights()
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    player:GetPropertyChangedSignal("Team"):Connect(function()
+        updateEnemyHighlights()
+    end)
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        updateEnemyHighlights()
+    end)
+end)
+
+updateEnemyHighlights()
+
+-- Aimbot Targeting
+local function getClosestTarget()
+    local closest = nil
+    local shortestDistance = math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild(targetPartName) then
+            local part = player.Character[targetPartName]
+            local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                if distance <= fovRadius and distance < shortestDistance then
+                    shortestDistance = distance
+                    closest = player
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function aimAt(player)
+    if player and player.Character and player.Character:FindFirstChild(targetPartName) then
+        local targetPart = player.Character[targetPartName]
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+    end
+end
+
+-- Key Input
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.E then
+        holdingE = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.E then
+        holdingE = false
+    end
+end)
+
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    fovCircle.Radius = fovRadius
+    fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    if aimbotEnabled and holdingE then
+        local target = getClosestTarget()
+        aimAt(target)
+    end
+end)
