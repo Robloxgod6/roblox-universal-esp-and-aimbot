@@ -1,216 +1,226 @@
--- Roblox Aimbot Script with Full Panel UI (Movable)
+-- ALIXID HUB - Aimbot + RGB ESP + FOV + UI Buttons
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- === CONFIG ===
-local aimbotEnabled = false
+-- CONFIG
+local aimbotEnabled = true
 local holdingE = false
 local fovRadius = 100
+local aimbotSmoothness = 0.2
 local targetPartName = "Head"
+local espEnabled = true
+local fovVisible = true
+local highlights = {}
 
--- === GUI Setup ===
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AimbotUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- UI Setup
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "ALIXID_HUB"
+ScreenGui.ResetOnSpawn = false
 
-local panel = Instance.new("Frame")
-panel.Size = UDim2.new(0, 240, 0, 180)
-panel.Position = UDim2.new(0.05, 0, 0.2, 0)
-panel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-panel.BorderSizePixel = 0
-panel.Active = true
-panel.Draggable = true
-panel.Parent = screenGui
+-- Animated Intro
+local IntroFrame = Instance.new("Frame", ScreenGui)
+IntroFrame.Size = UDim2.new(1, 0, 1, 0)
+IntroFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 
-local corner = Instance.new("UICorner", panel)
-corner.CornerRadius = UDim.new(0, 12)
+local IntroText = Instance.new("TextLabel", IntroFrame)
+IntroText.Size = UDim2.new(1, 0, 1, 0)
+IntroText.Position = UDim2.new(0, 0, 0, 0)
+IntroText.BackgroundTransparency = 1
+IntroText.Text = "ALIXID HUB"
+IntroText.Font = Enum.Font.GothamBlack
+IntroText.TextScaled = true
+IntroText.TextColor3 = Color3.new(1, 1, 1)
 
--- Title
-local title = Instance.new("TextLabel", panel)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundTransparency = 1
-title.Text = "🎯 Aimbot Panel"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
+TweenService:Create(IntroText, TweenInfo.new(2), {TextTransparency = 0}):Play()
+task.wait(2)
+TweenService:Create(IntroText, TweenInfo.new(2), {TextTransparency = 1}):Play()
+local tween = TweenService:Create(IntroFrame, TweenInfo.new(1), {BackgroundTransparency = 1})
+tween:Play()
+tween.Completed:Wait()
+IntroFrame:Destroy()
 
--- Toggle Button
-local toggleBtn = Instance.new("TextButton", panel)
-toggleBtn.Size = UDim2.new(0.9, 0, 0, 30)
-toggleBtn.Position = UDim2.new(0.05, 0, 0, 40)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Text = "Aimbot: OFF"
-toggleBtn.Font = Enum.Font.Gotham
-toggleBtn.TextSize = 16
+-- Main Panel
+local Panel = Instance.new("Frame", ScreenGui)
+Panel.Size = UDim2.new(0, 250, 0, 300)
+Panel.Position = UDim2.new(0.5, -125, 0.5, -150)
+Panel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Panel.BorderSizePixel = 0
+Panel.Active = true
+Panel.Draggable = true
 
-local toggleCorner = Instance.new("UICorner", toggleBtn)
-toggleCorner.CornerRadius = UDim.new(0, 10)
+local Title = Instance.new("TextLabel", Panel)
+Title.Size = UDim2.new(1, 0, 0, 20)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "ALIXID HUB"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
 
--- Part Selector Dropdown
-local partDropdown = Instance.new("TextButton", panel)
-partDropdown.Size = UDim2.new(0.9, 0, 0, 30)
-partDropdown.Position = UDim2.new(0.05, 0, 0, 80)
-partDropdown.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-partDropdown.TextColor3 = Color3.new(1, 1, 1)
-partDropdown.Text = "Target: Head"
-partDropdown.Font = Enum.Font.Gotham
-partDropdown.TextSize = 16
-
-local partCorner = Instance.new("UICorner", partDropdown)
-partCorner.CornerRadius = UDim.new(0, 10)
-
--- FOV Radius Slider (TextBox)
-local fovLabel = Instance.new("TextLabel", panel)
-fovLabel.Size = UDim2.new(0.9, 0, 0, 20)
-fovLabel.Position = UDim2.new(0.05, 0, 0, 120)
-fovLabel.BackgroundTransparency = 1
-fovLabel.Text = "FOV Radius: " .. tostring(fovRadius)
-fovLabel.TextColor3 = Color3.new(1, 1, 1)
-fovLabel.Font = Enum.Font.Gotham
-fovLabel.TextSize = 14
-
-local fovBox = Instance.new("TextBox", panel)
-fovBox.Size = UDim2.new(0.9, 0, 0, 30)
-fovBox.Position = UDim2.new(0.05, 0, 0, 140)
-fovBox.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
-fovBox.Text = tostring(fovRadius)
-fovBox.TextColor3 = Color3.new(1, 1, 1)
-fovBox.Font = Enum.Font.Gotham
-fovBox.TextSize = 16
-
--- Event Hooks
-fovBox.FocusLost:Connect(function()
-    local num = tonumber(fovBox.Text)
-    if num then
-        fovRadius = math.clamp(num, 25, 500)
-        fovLabel.Text = "FOV Radius: " .. tostring(fovRadius)
-    else
-        fovBox.Text = tostring(fovRadius)
-    end
+local HideBtn = Instance.new("TextButton", Panel)
+HideBtn.Size = UDim2.new(0, 60, 0, 20)
+HideBtn.Position = UDim2.new(1, -65, 0, 0)
+HideBtn.Text = "Hide"
+HideBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+HideBtn.TextColor3 = Color3.new(1, 1, 1)
+HideBtn.MouseButton1Click:Connect(function()
+    Panel.Visible = false
+    StarterGui:SetCore("SendNotification", {
+        Title = "ALIXID HUB",
+        Text = "Press 'K' to show the panel again.",
+        Duration = 5
+    })
 end)
 
-toggleBtn.MouseButton1Click:Connect(function()
-    aimbotEnabled = not aimbotEnabled
-    toggleBtn.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
-    toggleBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(70, 0, 0) or Color3.fromRGB(45, 45, 45)
-end)
-
-partDropdown.MouseButton1Click:Connect(function()
-    targetPartName = (targetPartName == "Head") and "Torso" or "Head"
-    partDropdown.Text = "Target: " .. targetPartName
-end)
-
--- Drawing FOV Circle
-local fovCircle = Drawing.new("Circle")
-fovCircle.Color = Color3.fromRGB(255, 0, 0)
-fovCircle.Thickness = 2
-fovCircle.Filled = false
-fovCircle.Visible = true
-
--- Highlight Enemies
-local function highlightEnemy(player)
-    if player.Character then
-        local highlight = player.Character:FindFirstChild("Highlight")
-        if not highlight then
-            highlight = Instance.new("Highlight")
-            highlight.Name = "Highlight"
-            highlight.FillColor = Color3.fromRGB(255, 0, 0)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.Parent = player.Character
-        end
-    end
-end
-
-local function updateEnemyHighlights()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            if player.Team ~= LocalPlayer.Team then
-                if player.Character then
-                    highlightEnemy(player)
-                end
-                player.CharacterAdded:Connect(function()
-                    task.wait(1)
-                    highlightEnemy(player)
-                end)
-            else
-                if player.Character then
-                    local h = player.Character:FindFirstChild("Highlight")
-                    if h then h:Destroy() end
-                end
-            end
-        end
-    end
-end
-
-LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
-    updateEnemyHighlights()
-end)
-
-Players.PlayerAdded:Connect(function(player)
-    player:GetPropertyChangedSignal("Team"):Connect(function()
-        updateEnemyHighlights()
-    end)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        updateEnemyHighlights()
-    end)
-end)
-
-updateEnemyHighlights()
-
--- Aimbot Targeting
-local function getClosestTarget()
-    local closest = nil
-    local shortestDistance = math.huge
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild(targetPartName) then
-            local part = player.Character[targetPartName]
-            local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-            if onScreen then
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
-                if distance <= fovRadius and distance < shortestDistance then
-                    shortestDistance = distance
-                    closest = player
-                end
-            end
-        end
-    end
-    return closest
-end
-
-local function aimAt(player)
-    if player and player.Character and player.Character:FindFirstChild(targetPartName) then
-        local targetPart = player.Character[targetPartName]
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
-    end
-end
-
--- Key Input
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.E then
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.K then
+        Panel.Visible = true
+    elseif input.KeyCode == Enum.KeyCode.E then
         holdingE = true
     end
 end)
-
 UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.E then
         holdingE = false
     end
 end)
 
--- Main Loop
-RunService.RenderStepped:Connect(function()
-    fovCircle.Radius = fovRadius
-    fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    if aimbotEnabled and holdingE then
-        local target = getClosestTarget()
-        aimAt(target)
+spawn(function()
+    while true do
+        local hue = tick() % 5 / 5
+        Panel.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+        task.wait(0.05)
     end
 end)
+
+-- UI Buttons
+local function createToggle(labelText, defaultState, posY, callback)
+    local btn = Instance.new("TextButton", Panel)
+    btn.Size = UDim2.new(0.8, 0, 0, 25)
+    btn.Position = UDim2.new(0.1, 0, 0, posY)
+    btn.Text = labelText .. ": " .. (defaultState and "ON" or "OFF")
+    btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 14
+
+    local state = defaultState
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = labelText .. ": " .. (state and "ON" or "OFF")
+        callback(state)
+    end)
+end
+
+createToggle("Aimbot", aimbotEnabled, 30, function(state) aimbotEnabled = state end)
+createToggle("ESP", espEnabled, 65, function(state) espEnabled = state end)
+createToggle("FOV Circle", fovVisible, 100, function(state) fovVisible = state end)
+
+local SmoothLabel = Instance.new("TextLabel", Panel)
+SmoothLabel.Size = UDim2.new(0.8, 0, 0, 20)
+SmoothLabel.Position = UDim2.new(0.1, 0, 0, 140)
+SmoothLabel.BackgroundTransparency = 1
+SmoothLabel.TextColor3 = Color3.new(1, 1, 1)
+SmoothLabel.Text = "Smoothness: " .. tostring(aimbotSmoothness)
+SmoothLabel.TextSize = 14
+SmoothLabel.Font = Enum.Font.SourceSans
+
+local SmoothSlider = Instance.new("TextButton", Panel)
+SmoothSlider.Size = UDim2.new(0.8, 0, 0, 20)
+SmoothSlider.Position = UDim2.new(0.1, 0, 0, 165)
+SmoothSlider.Text = "Change Smoothness"
+SmoothSlider.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+SmoothSlider.TextColor3 = Color3.new(1, 1, 1)
+SmoothSlider.Font = Enum.Font.SourceSans
+SmoothSlider.TextSize = 14
+
+SmoothSlider.MouseButton1Click:Connect(function()
+    aimbotSmoothness = aimbotSmoothness + 0.1
+    if aimbotSmoothness > 1 then aimbotSmoothness = 0.1 end
+    SmoothLabel.Text = "Smoothness: " .. string.format("%.1f", aimbotSmoothness)
+end)
+
+-- RGB ESP Outline Only (No fill)
+RunService.Heartbeat:Connect(function()
+    if espEnabled then
+        for i, hl in ipairs(highlights) do
+            local adornee = hl.Adornee
+            if adornee and adornee:FindFirstChild("HumanoidRootPart") then
+                local color = Color3.fromHSV((tick() + i * 0.1) % 1, 1, 1)
+                hl.OutlineColor = color
+                hl.FillTransparency = 1
+            end
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled and holdingE then
+        local closest, distance = nil, math.huge
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and (player.Team ~= LocalPlayer.Team or not LocalPlayer.Team) and player.Character and player.Character:FindFirstChild(targetPartName) then
+                local part = player.Character[targetPartName]
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                local mousePos = UserInputService:GetMouseLocation()
+                local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
+                if onScreen and mag < distance and mag <= fovRadius then
+                    closest = part
+                    distance = mag
+                end
+            end
+        end
+        if closest then
+            local camPos = Camera.CFrame.Position
+            local direction = (closest.Position - camPos).Unit
+            local targetCF = CFrame.new(camPos, camPos + direction)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCF, aimbotSmoothness)
+        end
+    end
+end)
+
+local circle = Drawing.new("Circle")
+circle.Color = Color3.fromRGB(255, 255, 255)
+circle.Thickness = 1
+circle.Filled = false
+circle.Radius = fovRadius
+circle.Visible = true
+
+RunService.RenderStepped:Connect(function()
+    local pos = UserInputService:GetMouseLocation()
+    circle.Position = Vector2.new(pos.X, pos.Y)
+    circle.Radius = fovRadius
+    circle.Visible = fovVisible
+end)
+
+local function updateESP()
+    for _, v in pairs(highlights) do v:Destroy() end
+    table.clear(highlights)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and (player.Team ~= LocalPlayer.Team or not LocalPlayer.Team) then
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local highlight = Instance.new("Highlight")
+                highlight.Adornee = char
+                highlight.FillColor = Color3.new(0, 0, 0)
+                highlight.FillTransparency = 1
+                highlight.OutlineTransparency = 0
+                highlight.Parent = char
+                table.insert(highlights, highlight)
+            end
+        end
+    end
+end
+
+RunService.Stepped:Connect(function()
+    if espEnabled then
+        updateESP()
+    end
+end)
+
+updateESP()
